@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import '../blank.css';
 import { useSelector } from 'react-redux';
 import { store } from '../redux/store/store';
-import { showLoading } from '../redux/slices/userSlice';
+import { cleanStore, showLoading } from '../redux/slices/userSlice';
 import { Comment } from 'react-loader-spinner';
 const ChatBody = ({ messages, lastMessageRef, setMessages, socket }) => {
   const [typingStatus, setTypingStatus] = useState({});
@@ -14,14 +14,13 @@ const ChatBody = ({ messages, lastMessageRef, setMessages, socket }) => {
   const [showSpinner, setShowSpinner] = useState(false);
 
   const handleLeaveChat = () => {
-    localStorage.clear();
+    store.dispatch(cleanStore());
     navigate('/');
-    window.location.reload();
   };
 
-  const fetchMessages = async () => {
+  const fetchMessages = () => {
     if (chattingUser?._id)
-      await socket.emit(
+      socket.emit(
         'findAllMessage',
         {
           sender: loggedInUser?._id,
@@ -55,9 +54,7 @@ const ChatBody = ({ messages, lastMessageRef, setMessages, socket }) => {
   }
 
   socket.on('message', () => {
-    setShowSpinner(true);
     fetchMessages();
-    setShowSpinner(false);
   });
 
   socket.on('typing', (response) => {
@@ -66,10 +63,10 @@ const ChatBody = ({ messages, lastMessageRef, setMessages, socket }) => {
 
   useEffect(() => {
     setShowSpinner(true);
-
     fetchMessages();
-
-    setShowSpinner(false);
+    setTimeout(() => {
+      setShowSpinner(false);
+    }, 500);
   }, [chattingUser]);
 
   return (
@@ -89,35 +86,36 @@ const ChatBody = ({ messages, lastMessageRef, setMessages, socket }) => {
           style={
             showSpinner
               ? {
-                  background: 'black',
-                  opacity: 0.2,
+                  background: 'orange',
+                  opacity: 0.1,
                 }
               : {}
           }
         >
-          {messages.map((message) =>
-            message.sender === loggedInUser?._id ? (
-              <div className="message__chats" key={message._id}>
-                {/* <p className="sender__name">You</p> */}
-                <div className="message__sender">
-                  <p>{message.message}</p>
-                  <p className="message_date">
-                    {formatChatDate(new Date(message.createdAt))}
-                  </p>
+          {!showSpinner &&
+            messages.map((message) =>
+              message.sender === loggedInUser?._id ? (
+                <div className="message__chats" key={message._id}>
+                  {/* <p className="sender__name">You</p> */}
+                  <div className="message__sender">
+                    <p>{message.message}</p>
+                    <p className="message_date">
+                      {formatChatDate(new Date(message.createdAt))}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="message__chats" key={message._id}>
-                {/* <p>{message.reciever}</p> */}
-                <div className="message__recipient">
-                  <p>{message.message}</p>
-                  <p className="message_date">
-                    {formatChatDate(new Date(message.createdAt))}
-                  </p>
+              ) : (
+                <div className="message__chats" key={message._id}>
+                  {/* <p>{message.reciever}</p> */}
+                  <div className="message__recipient">
+                    <p>{message.message}</p>
+                    <p className="message_date">
+                      {formatChatDate(new Date(message.createdAt))}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            ),
-          )}
+              ),
+            )}
 
           <div className="message__status">
             {typingStatus.isTyping &&
